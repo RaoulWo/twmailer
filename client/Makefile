@@ -9,7 +9,7 @@ BUILD_DIR := bin
 # Files
 SOURCES := $(wildcard $(SRC_DIR)/*.cpp)
 OBJECTS := $(patsubst $(SRC_DIR)/%.cpp, $(BUILD_DIR)/%.o, $(SOURCES))
-EXECUTABLE := $(BUILD_DIR)/twmailer
+EXECUTABLE := $(BUILD_DIR)/twmailer-client
 
 all:	build $(EXECUTABLE)
 
