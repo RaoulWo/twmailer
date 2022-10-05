@@ -1,8 +1,9 @@
-#include <iostream>
+#include "Client.h"
 
-int main()
+int main(int argc, char** argv)
 {
-    std::cout << "I am a Client!" << std::endl;
+    TwMailer::Client* client = new TwMailer::Client();
+    client->Start(argc, argv);
 
     return 0;
 }
