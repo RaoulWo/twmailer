@@ -50,7 +50,7 @@ namespace TwMailer
 
     void Parser::LogUsage() const
     {
-        std::cerr << "Usage Client: ./twmailer <ip> <port>" << '\n';
+        std::cerr << "Usage Client: ./twmailer-client <ip> <port>" << '\n';
     }
 
 }
