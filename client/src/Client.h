@@ -7,8 +7,8 @@
 namespace TwMailer 
 {
     
+    // The size of the buffer
     constexpr int BUF = 1024;
-    constexpr int PORT = 6543;
 
     class Client
     {

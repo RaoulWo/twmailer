@@ -97,7 +97,7 @@ namespace TwMailer
         memset(&address, 0, sizeof(address));
         address.sin_family = AF_INET;
         address.sin_addr.s_addr = INADDR_ANY;
-        address.sin_port = htons(PORT);
+        address.sin_port = htons(std::stoi(port));
 
         if (bind(create_socket, (struct sockaddr*)&address, sizeof(address)) == -1)
         {
@@ -135,7 +135,7 @@ namespace TwMailer
             // Start client
             std::cout << "Client connected from " << inet_ntoa(cliaddress.sin_addr) << ":" << ntohs(cliaddress.sin_port) << '\n';
 
-            // TODO
+            // TODO clientCommunication call
 
             new_socket = -1;
         }

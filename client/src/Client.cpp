@@ -62,7 +62,7 @@ namespace TwMailer
 
         memset(&address, 0, sizeof(address));
         address.sin_family = AF_INET;
-        address.sin_port = htons(PORT);
+        address.sin_port = htons(std::stoi(port));
 
         inet_aton(ip.c_str(), &address.sin_addr);
     }
