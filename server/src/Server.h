@@ -13,12 +13,12 @@ namespace TwMailer
     class Server
     {
     public:
-        void Start(std::string port, std::string mailSpoolDir);
+        void Start(int port, std::string mailSpoolDir);
         void ListenForClients();
         void Abort();
 
     private:
-        void TryStart(std::string port, std::string mailSpoolDir);
+        void TryStart(int port, std::string mailSpoolDir);
         void TryListenForClients();
 
         int create_socket = -1;

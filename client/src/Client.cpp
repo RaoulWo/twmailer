@@ -11,7 +11,7 @@
 
 namespace TwMailer
 {
-    Client::Client(std::string ip, std::string port)
+    Client::Client(std::string ip, int port)
     { 
         this->ip = ip;
         this->port = port;
@@ -62,7 +62,7 @@ namespace TwMailer
 
         memset(&address, 0, sizeof(address));
         address.sin_family = AF_INET;
-        address.sin_port = htons(std::stoi(port));
+        address.sin_port = htons(port);
 
         inet_aton(ip.c_str(), &address.sin_addr);
     }

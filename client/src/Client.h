@@ -13,7 +13,7 @@ namespace TwMailer
     class Client
     {
     public:
-        Client(std::string ip, std::string port);
+        Client(std::string ip, int port);
 
         void Start();
         void ConnectToServer();
@@ -23,7 +23,7 @@ namespace TwMailer
         void TryConnectToServer();
 
         std::string ip;
-        std::string port;
+        int port;
 
         int create_socket;
         char buffer[BUF];

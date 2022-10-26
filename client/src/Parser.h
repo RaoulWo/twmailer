@@ -14,13 +14,13 @@ namespace TwMailer
 
         // Getters
         const std::string& GetIp() const;
-        const std::string& GetPort() const;
+        int GetPort() const;
     private:
         void TryParse(int argc, char** argv);
         void LogUsage() const;
 
         std::string ip;
-        std::string port;
+        int port;
     };
 
 }

@@ -32,7 +32,7 @@ namespace TwMailer
         return ip;
     }
 
-    const std::string& Parser::GetPort() const
+    int Parser::GetPort() const
     {
         return port;
     }
@@ -45,7 +45,15 @@ namespace TwMailer
         }
 
         ip = argv[1];
-        port = argv[2];        
+
+        try
+        {
+            port = std::stoi(argv[2]);
+        }
+        catch(const std::exception& e)
+        {
+            throw std::runtime_error("Could not convert port to number!");
+        } 
     }
 
     void Parser::LogUsage() const

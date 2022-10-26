@@ -16,7 +16,7 @@ int main(int argc, char** argv)
 
     // Parse the command line arguments
     parser->Parse(argc, argv);
-    std::string port = parser->GetPort();
+    int port = parser->GetPort();
     std::string mailSpoolDir = parser->GetMailSpoolDir();
 
     delete parser;

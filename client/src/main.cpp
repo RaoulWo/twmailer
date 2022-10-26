@@ -8,7 +8,7 @@ int main(int argc, char** argv)
     // Parse the command line arguments
     parser->Parse(argc, argv);
     std::string ip = parser->GetIp();
-    std::string port = parser->GetPort();
+    int port = parser->GetPort();
 
     delete parser;
 

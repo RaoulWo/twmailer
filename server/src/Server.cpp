@@ -10,7 +10,7 @@
 
 namespace TwMailer
 {
-    void Server::Start(std::string port, std::string mailSpoolDir)
+    void Server::Start(int port, std::string mailSpoolDir)
     {
         try
         {
@@ -77,7 +77,7 @@ namespace TwMailer
         }
     }
 
-    void Server::TryStart(std::string port, std::string mailSpoolDir)
+    void Server::TryStart(int port, std::string mailSpoolDir)
     {
         int reuseValue = 1;
 
@@ -97,7 +97,7 @@ namespace TwMailer
         memset(&address, 0, sizeof(address));
         address.sin_family = AF_INET;
         address.sin_addr.s_addr = INADDR_ANY;
-        address.sin_port = htons(std::stoi(port));
+        address.sin_port = htons(port);
 
         if (bind(create_socket, (struct sockaddr*)&address, sizeof(address)) == -1)
         {
