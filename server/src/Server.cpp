@@ -10,11 +10,11 @@
 
 namespace TwMailer
 {
-    void Server::Start(int port, std::string mailSpoolDir)
+    void Server::Start(int port)
     {
         try
         {
-            TryStart(port, mailSpoolDir);
+            TryStart(port);
         }
         catch(const std::runtime_error& e)
         {
@@ -28,11 +28,11 @@ namespace TwMailer
         }
     }
 
-    void Server::ListenForClients()
+    void Server::ListenForClients(const std::string& mailSpoolDir)
     {
         try
         {
-            TryListenForClients();
+            TryListenForClients(mailSpoolDir);
         }
         catch(const std::runtime_error& e)
         {
@@ -42,6 +42,24 @@ namespace TwMailer
         catch(...)
         {
             std::cerr << "An unexpected error occured when trying to listen for clients!" << '\n';
+            exit(EXIT_FAILURE);
+        }
+    }
+
+    void Server::CommunicateWithClient(int* socket, const std::string& mailSpoolDir)
+    {
+        try
+        {
+            TryCommunicateWithClient(socket, mailSpoolDir);
+        }
+        catch(const std::runtime_error& e)
+        {
+            std::cerr << e.what() << '\n';
+            exit(EXIT_FAILURE);
+        }
+        catch(...)
+        {
+            std::cerr << "An unexpected error occured when trying to communicate with a client!" << '\n';
             exit(EXIT_FAILURE);
         }
     }
@@ -77,7 +95,7 @@ namespace TwMailer
         }
     }
 
-    void Server::TryStart(int port, std::string mailSpoolDir)
+    void Server::TryStart(int port)
     {
         int reuseValue = 1;
 
@@ -101,11 +119,11 @@ namespace TwMailer
 
         if (bind(create_socket, (struct sockaddr*)&address, sizeof(address)) == -1)
         {
-            throw std::runtime_error("Could not address to socket!");
+            throw std::runtime_error("Could not bind address to socket!");
         }
     }
 
-    void Server::TryListenForClients()
+    void Server::TryListenForClients(const std::string& mailSpoolDir)
     {
         int queuedRequests = 5;
         if (listen(create_socket, queuedRequests) == -1)
@@ -135,7 +153,10 @@ namespace TwMailer
             // Start client
             std::cout << "Client connected from " << inet_ntoa(cliaddress.sin_addr) << ":" << ntohs(cliaddress.sin_port) << '\n';
 
-            // TODO clientCommunication call
+            // Add new socket to sockets vector
+            sockets.push_back(new_socket);
+            // Add new thread to threads vector
+            threads.push_back(std::thread([=] {CommunicateWithClient(&sockets[sockets.size() - 1], mailSpoolDir); }));
 
             new_socket = -1;
         }
@@ -152,6 +173,67 @@ namespace TwMailer
                 std::cerr << "Close create_socket!" << '\n';
             }
             create_socket = -1;
+        }
+    }
+
+    void Server::TryCommunicateWithClient(int* socket, const std::string& mailSpoolDir)
+    {
+        std::cout << "Socket: " << *socket << "is here!" << '\n';
+
+        char buffer[BUF];
+        int size;
+
+        do
+        {
+            // Receive message
+            size = recv(*socket, buffer, BUF - 1, 0);
+            // Error handling
+            if (size == -1)
+            {
+                if (abortRequested)
+                {
+                    std::cerr << "recv error after aborted request!" << '\n';
+                }
+                else
+                {
+                    std::cerr << "recv error!" << '\n';
+                }
+                break;
+            }
+            else if (size == 0)
+            {
+                std::cout << "Client closed remote socket!" << '\n';
+                break;
+            }
+
+            std::cout << "Message received:" << '\n' << buffer << '\n';
+
+            // TODO Handle received message
+
+            // Quit if QUIT\n received
+            if (strcmp(buffer, "QUIT\n") == 0)
+            {
+                std::cout << "Client logged out!" << '\n';
+                break;
+            }
+
+            // TODO Handle sending response
+
+        } while (!abortRequested);
+
+        // Free the descriptor
+        if (*socket != -1)
+        {
+            if (shutdown(*socket, SHUT_RDWR) == -1)
+            {
+                std::cerr << "Shutdown new_socket!" << '\n';
+            }
+            if (close(*socket) == -1)
+            {
+                std::cerr << "Close new_socket!" << '\n';
+            }
+
+            *socket = -1;
         }
     }
 

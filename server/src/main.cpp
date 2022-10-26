@@ -29,10 +29,10 @@ int main(int argc, char** argv)
     }
 
     // Start the server
-    server->Start(port, mailSpoolDir);
+    server->Start(port);
 
     // List for clients
-    server->ListenForClients();
+    server->ListenForClients(mailSpoolDir);
 
     delete server;
 
