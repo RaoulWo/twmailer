@@ -113,7 +113,17 @@ namespace TwMailer
             }
             else 
             {
-                // TODO Handle response
+                // Handle response
+                try
+                {
+                    HandleResponse(buffer);
+                }
+                catch(const std::exception& e)
+                {
+                    std::cerr << e.what() << '\n';
+                    system("read REPLY");
+                }
+            
 
                 // Handle user input
                 char c;
@@ -414,6 +424,77 @@ namespace TwMailer
         } while (true);
 
         return msgNum;
+    }
+
+    void Client::HandleResponse(const std::string& response) const
+    {
+        if (response.size() == 0)
+        {
+            throw std::runtime_error("Invalid server response!");
+        }
+
+        // Split the response into tokens with '\n' as delimiter
+        std::vector<std::string> tokens = ParseResponse(response);
+
+        if (tokens[0] == "OK" && tokens.size() == 1)
+        {
+            std::cout << "OK" << '\n';
+        }
+        else if (tokens[0] == "OK" && tokens.size() == 2)
+        {
+            std::cout << "OK, Message Content:" << '\n';
+            std::cout << tokens[1] << '\n';
+        }
+        else if (tokens[0] == "ERR")
+        {
+            std::cout << "ERROR" << '\n';
+        }
+        else
+        {
+            int messageCount;
+            try
+            {
+                messageCount = std::stoi(tokens[0]);
+            }
+            catch(const std::exception& e)
+            {
+                std::cerr << e.what() << '\n';
+            }
+
+            if (messageCount <= 0)
+            {
+                std::cout << "You've received 0 messages!" << '\n';
+            }
+            else
+            {
+                std::cout << "You've received " << messageCount << " messages!" << '\n';
+                for (long unsigned i = 1; i < tokens.size(); i++)
+                {
+                    std::cout << tokens[i] << '\n';
+                }
+            }
+        }
+
+        system("read REPLY");
+    }
+
+    std::vector<std::string> Client::ParseResponse(const std::string& response) const
+    {
+        std::vector<std::string> tokens;
+        std::string delimiter = "\n";
+
+        size_t last = 0; 
+        size_t next = 0; 
+
+        while ((next = response.find(delimiter, last)) != std::string::npos) 
+        {   
+            tokens.push_back(response.substr(last, next-last));
+
+            last = next + 1; 
+        } 
+        tokens.push_back(response.substr(last));
+
+        return tokens;
     }
 
 }

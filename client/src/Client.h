@@ -3,6 +3,7 @@
 
 #include <netinet/in.h> // For sockaddr_in
 #include <string>
+#include <vector>
 
 namespace TwMailer 
 {
@@ -24,21 +25,19 @@ namespace TwMailer
         void StoreUsername();
         void PrintMenu() const;
         bool IsValidMenuChar(char c) const;
-
         std::string ConstructRequest(char c) const;
         std::string ConstructSendRequest() const;
         std::string ConstructListRequest() const;
         std::string ConstructReadRequest() const;
         std::string ConstructDeleteRequest() const;
         std::string ConstructQuitRequest() const;
-
         void SendRequest(const std::string& request) const;
-
         std::string GetReceiver() const;
         std::string GetSubject() const;
         std::string GetMessage() const;
         int GetMsgNum() const;
-
+        void HandleResponse(const std::string& response) const;
+        std::vector<std::string> ParseResponse(const std::string& response) const;
 
         std::string ip;
         int port;
