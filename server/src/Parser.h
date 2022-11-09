@@ -13,13 +13,13 @@ namespace TwMailer
         void Parse(int argc, char** argv);
 
         // Getters
-        const std::string& GetPort() const;
+        int GetPort() const;
         const std::string& GetMailSpoolDir() const;
     private:
         void TryParse(int argc, char** argv);
         void LogUsage() const;
 
-        std::string port;
+        int port;
         std::string mailSpoolDir;
     };
 

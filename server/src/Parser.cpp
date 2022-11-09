@@ -27,7 +27,7 @@ namespace TwMailer
         
     }
 
-    const std::string& Parser::GetPort() const 
+    int Parser::GetPort() const 
     {
         return port;
     }
@@ -44,7 +44,15 @@ namespace TwMailer
             throw std::runtime_error("Incorrect number of arguments!");
         }
 
-        port = argv[1];
+        try
+        {
+            port = std::stoi(argv[1]);
+        }
+        catch(const std::exception& e)
+        {
+            throw std::runtime_error("Could not convert port to number!");
+        }
+        
         mailSpoolDir = argv[2];        
     }
 

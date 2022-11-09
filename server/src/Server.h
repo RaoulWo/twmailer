@@ -3,24 +3,39 @@
 
 #include <netinet/in.h>
 #include <string>
+#include <thread>
+#include <vector>
 
 namespace TwMailer
 {
 
+    // The size of the buffer
     constexpr int BUF = 1024;
-    constexpr int PORT = 6543;
-    constexpr int MSGSIZE = 11;
 
     class Server
     {
     public:
-        void Start(std::string port, std::string mailSpoolDir);
-        void ListenForClients();
+        void Start(int port);
+        void ListenForClients(const std::string& mailSpoolDir);
+        void CommunicateWithClient(int* socket);
         void Abort();
 
     private:
-        void TryStart(std::string port, std::string mailSpoolDir);
+        void TryStart(int port);
+        void TryCommunicateWithClient(int* socket);
         void TryListenForClients();
+        std::string HandleRequest(const std::string& request);
+        void SendResponse(int* socket, const std::string& response) const;
+        std::string HandleSendRequest(const std::vector<std::string>& tokens);
+        std::string HandleListRequest(const std::vector<std::string>& tokens);
+        std::string HandleReadRequest(const std::vector<std::string>& tokens);
+        std::string HandleDeleteRequest(const std::vector<std::string>& tokens);
+        std::string HandleQuitRequest(const std::vector<std::string>& tokens);
+        std::string HandleBadRequest(const std::vector<std::string>& tokens);
+        std::vector<std::string> ParseText(const std::string& text) const;
+
+        bool EntryExistsInPath(const std::string& entry, const std::string& path) const;
+        int GetNumberOfEntriesInPath(const std::string& path) const;
 
         int create_socket = -1;
         int new_socket = -1;
@@ -28,8 +43,9 @@ namespace TwMailer
         struct sockaddr_in cliaddress;
         socklen_t addrlen;
         bool abortRequested = false;
-        int socketA;
-        int socketB;
+        std::vector<int> sockets;
+        std::vector<std::thread> threads;
+        std::string mailSpoolDir;
     };
 
 }

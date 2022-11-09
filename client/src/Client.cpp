@@ -1,9 +1,9 @@
 #include "Client.h"
 
-#include <iostream>
-#include <stdexcept>
-
 #include <arpa/inet.h>
+#include <iostream>
+#include <regex>
+#include <stdexcept>
 #include <stdio.h>
 #include <string.h>
 #include <sys/socket.h>
@@ -11,7 +11,7 @@
 
 namespace TwMailer
 {
-    Client::Client(std::string ip, std::string port)
+    Client::Client(std::string ip, int port)
     { 
         this->ip = ip;
         this->port = port;
@@ -62,7 +62,7 @@ namespace TwMailer
 
         memset(&address, 0, sizeof(address));
         address.sin_family = AF_INET;
-        address.sin_port = htons(PORT);
+        address.sin_port = htons(port);
 
         inet_aton(ip.c_str(), &address.sin_addr);
     }
@@ -76,8 +76,24 @@ namespace TwMailer
 
         std::cout << "Connection with server " << inet_ntoa(address.sin_addr) << " established!" << '\n';
 
+        // Store the username
+        StoreUsername();
+
+        // Handle user input
+        char c = GetUserMenuInput();
+        
+        // Construct request
+        std::string request = ConstructRequest(c);
+
+        // Send request
+        SendRequest(request);
+
         do 
         {
+            // Reset the buffer
+            memset(buffer, 0, sizeof(buffer));
+
+            // Receive response
             size = recv(create_socket, buffer, BUF - 1, 0);
             if (size == -1)
             {
@@ -91,7 +107,26 @@ namespace TwMailer
             }
             else 
             {
-                // TODO
+                // Handle response
+                try
+                {
+                    HandleResponse(buffer);
+                }
+                catch(const std::exception& e)
+                {
+                    std::cerr << e.what() << '\n';
+                    system("read REPLY");
+                }
+            
+
+                // Handle user input
+                char c = GetUserMenuInput();
+                
+                // Construct request
+                std::string request = ConstructRequest(c);
+
+                // Send request
+                SendRequest(request);
             }
         }
         while (!isQuit);
@@ -108,6 +143,348 @@ namespace TwMailer
             }
             create_socket = -1;
         }
+    }
+
+    void Client::StoreUsername()
+    {
+        std::string name;
+        
+        std::regex pattern("[a-z0-9]+");
+
+        do 
+        {
+            system("clear");
+
+            std::cout << "Enter your username (a-z, 0-9) 4-8 characters:" << '\n';
+            std::cin >> name;
+
+            system("clear");
+
+            if (name.size() < 4)
+            {
+                std::cerr << "The username cannot be shorter than 4 characters!" << '\n';
+            }
+            else if (name.size() > 8)
+            {
+                std::cerr << "The username cannot be longer than 8 characters!" << '\n';
+            }
+            else if (!std::regex_match(name, pattern))
+            {
+                std::cerr << "The username must only contain the letters a-z and the digits 0-9!" << '\n';
+            }
+            else 
+            {
+                username = name;
+                break;
+            }
+
+            std::cout << "Press any key to continue!" << '\n';
+            system("read REPLY");
+
+        } while (true);
+    }
+
+    void Client::PrintMenu() const
+    {
+        system("clear");
+
+        std::cout << "Welcome, " << username << "!" << '\n' << '\n';
+        std::cout << "(S)end (L)ist (R)ead (D)elete (Q)uit" << '\n';
+    }
+
+    char Client::GetUserMenuInput()
+    {
+        char c;
+        do
+        {
+            // Render the menu screen
+            PrintMenu();
+
+            // Get the client input
+            c = getchar();
+
+        } while (!IsValidMenuChar(c));
+
+        return c;
+    }
+
+    bool Client::IsValidMenuChar(char c) const
+    {
+        return c == 'S' || c == 's' || c == 'L' || c == 'l' || c == 'R' || 
+            c == 'r' || c == 'D' || c == 'd' || c == 'Q' || c == 'q';
+    }
+
+    std::string Client::ConstructRequest(char c) const
+    {
+        std::string request = "";
+
+        switch (c)
+        {
+            case 'S':
+            case 's':
+                request = ConstructSendRequest();
+                break;
+            case 'L':
+            case 'l':
+                request = ConstructListRequest();
+                break;
+            case 'R':
+            case 'r':
+                request = ConstructReadRequest();
+                break;
+            case 'D':
+            case 'd':
+                request = ConstructDeleteRequest();
+                break;
+            case 'Q':
+            case 'q':
+                request = ConstructQuitRequest();
+                break;
+            default:
+                exit(EXIT_FAILURE);
+        }
+
+        return request;
+    }
+
+    std::string Client::ConstructSendRequest() const
+    {
+        std::string receiver = GetReceiver();
+        std::string subject = GetSubject();
+        std::string message = GetMessage();
+
+        return "SEND\n" + username + '\n' + receiver + '\n' + subject + '\n' + message + '\n' + ".\n";
+    }
+
+    std::string Client::ConstructListRequest() const
+    {
+        return "LIST\n" + username + '\n';
+    }
+
+    std::string Client::ConstructReadRequest() const
+    {
+        return "READ\n" + username + '\n' + std::to_string(GetMsgNum()) + '\n';
+    }
+
+    std::string Client::ConstructDeleteRequest() const
+    {
+        return "DEL\n" + username + '\n' + std::to_string(GetMsgNum()) + '\n';
+    }
+
+    std::string Client::ConstructQuitRequest() const
+    {
+        return "QUIT\n";
+    }
+
+    void Client::SendRequest(const std::string& request) const
+    {
+        std::cout << "Sending request:" << '\n' << request << '\n';
+
+        if (send(create_socket, request.c_str(), request.size(), 0) == -1)
+        {
+            std::cerr << "Send the request failed!" << '\n';
+        }
+    }
+
+    std::string Client::GetReceiver() const
+    {
+        std::string receiver = "";
+        std::string input;
+
+        std::regex pattern("[a-z0-9]+");
+
+        do 
+        {
+            system("clear");
+
+            std::cout << "Enter the name of the receiver:" << '\n';
+            std::cin >> input;
+
+            system("clear");
+
+            if (input.size() < 4 || input.size() > 8 || !std::regex_match(input, pattern))
+            {
+                std::cerr << "Invalid username!" << '\n';
+            }
+            else 
+            {
+                receiver = input;
+                break;
+            }
+        } while (true);
+
+        return receiver;
+    }
+
+    std::string Client::GetSubject() const
+    {
+        std::string subject = "";
+        std::string input;
+
+        do 
+        {
+            system("clear");
+
+            std::cout << "Enter the message subject (max. 80 characters):" << '\n';
+            std::getline(std::cin, input);
+
+            system("clear");
+
+            if (input.size() == 0)
+            {
+                std::cerr << "Please enter the message subject!" << '\n';
+            }
+            else if (input.size() > 80)
+            {
+                std::cerr << "Only a maximum of 80 characters allowed!" << '\n';
+            }
+            else
+            {
+                subject = input;
+                break;
+            }
+        }
+        while (true);
+
+        return subject;
+    }
+
+    std::string Client::GetMessage() const
+    {
+        std::string message = "";
+        std::string input;
+
+        do 
+        {
+            system("clear");
+
+            std::cout << "Enter the message:" << '\n';
+            std::getline(std::cin, input);
+
+            system("clear");
+
+            if (input.size() == 0)
+            {
+                std::cerr << "Please enter the message!" << '\n';
+            }
+            else
+            {
+                message = input;
+                break;
+            }
+        }
+        while (true);
+
+        return message;
+    }
+
+    int Client::GetMsgNum() const
+    {
+        std::string input = "";
+        int msgNum;
+
+        do
+        {
+            system("clear");
+
+            std::cout << "Enter the message number:" << '\n';
+            std::cin >> input;
+
+            system("clear");
+
+            if (input.size() == 0)
+            {
+                std::cerr << "Please enter a message number!" << '\n';
+                std::cout << "Press any key to continue!" << '\n';
+                system("read REPLY");
+            }
+            else
+            {
+                try
+                {
+                    msgNum = std::stoi(input);
+                    break;
+                }
+                catch(const std::exception& e)
+                {
+                    std::cerr << "Could not convert user input to message number!" << '\n';
+                    std::cout << "Press any key to continue!" << '\n';
+                    system("read REPLY");
+                }
+            }
+        } while (true);
+
+        return msgNum;
+    }
+
+    void Client::HandleResponse(const std::string& response) const
+    {
+        if (response.size() == 0)
+        {
+            throw std::runtime_error("Invalid server response!");
+        }
+
+        // Split the response into tokens with '\n' as delimiter
+        std::vector<std::string> tokens = ParseResponse(response);
+
+        if (tokens[0] == "OK")
+        {
+            for (const auto& token : tokens)
+            {
+                std::cout << token << '\n';
+            }
+        }
+        else if (tokens[0] == "ERR")
+        {
+            std::cout << "ERROR" << '\n';
+        }
+        else
+        {
+            int messageCount;
+            try
+            {
+                messageCount = std::stoi(tokens[0]);
+            }
+            catch(const std::exception& e)
+            {
+                std::cerr << e.what() << '\n';
+            }
+
+            if (messageCount <= 0)
+            {
+                std::cout << "You've received 0 messages!" << '\n';
+            }
+            else
+            {
+                std::cout << "You've received " << messageCount << (messageCount == 1 ? " message" : " messages!") << '\n';
+                for (long unsigned i = 1; i < tokens.size(); i++)
+                {
+                    std::cout << tokens[i] << '\n';
+                }
+            }
+        }
+
+        std::cout << "Press any button to continue!" << '\n';
+        system("read REPLY");
+    }
+
+    std::vector<std::string> Client::ParseResponse(const std::string& response) const
+    {
+        std::vector<std::string> tokens;
+        std::string delimiter = "\n";
+
+        size_t last = 0; 
+        size_t next = 0; 
+
+        while ((next = response.find(delimiter, last)) != std::string::npos) 
+        {   
+            tokens.push_back(response.substr(last, next-last));
+
+            last = next + 1; 
+        } 
+        tokens.push_back(response.substr(last));
+
+        return tokens;
     }
 
 }
