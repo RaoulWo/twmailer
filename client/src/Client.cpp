@@ -80,16 +80,7 @@ namespace TwMailer
         StoreUsername();
 
         // Handle user input
-        char c;
-        do
-        {
-            // Render the menu screen
-            PrintMenu();
-
-            // Get the client input
-            c = getchar();
-
-        } while (!IsValidMenuChar(c));
+        char c = GetUserMenuInput();
         
         // Construct request
         std::string request = ConstructRequest(c);
@@ -99,6 +90,9 @@ namespace TwMailer
 
         do 
         {
+            // Reset the buffer
+            memset(buffer, 0, sizeof(buffer));
+
             // Receive response
             size = recv(create_socket, buffer, BUF - 1, 0);
             if (size == -1)
@@ -126,16 +120,7 @@ namespace TwMailer
             
 
                 // Handle user input
-                char c;
-                do
-                {
-                    // Render the menu screen
-                    PrintMenu();
-
-                    // Get the client input
-                    c = getchar();
-
-                } while (!IsValidMenuChar(c));
+                char c = GetUserMenuInput();
                 
                 // Construct request
                 std::string request = ConstructRequest(c);
@@ -205,6 +190,22 @@ namespace TwMailer
 
         std::cout << "Welcome, " << username << "!" << '\n' << '\n';
         std::cout << "(S)end (L)ist (R)ead (D)elete (Q)uit" << '\n';
+    }
+
+    char Client::GetUserMenuInput()
+    {
+        char c;
+        do
+        {
+            // Render the menu screen
+            PrintMenu();
+
+            // Get the client input
+            c = getchar();
+
+        } while (!IsValidMenuChar(c));
+
+        return c;
     }
 
     bool Client::IsValidMenuChar(char c) const
@@ -310,10 +311,6 @@ namespace TwMailer
                 receiver = input;
                 break;
             }
-
-            std::cout << "Press any key to continue!" << '\n';
-            system("read REPLY");
-
         } while (true);
 
         return receiver;
@@ -346,9 +343,6 @@ namespace TwMailer
                 subject = input;
                 break;
             }
-
-            std::cout << "Press any key to continue!" << '\n';
-            system("read REPLY");
         }
         while (true);
 
@@ -378,9 +372,6 @@ namespace TwMailer
                 message = input;
                 break;
             }
-
-            std::cout << "Press any key to continue!" << '\n';
-            system("read REPLY");
         }
         while (true);
 
@@ -436,14 +427,12 @@ namespace TwMailer
         // Split the response into tokens with '\n' as delimiter
         std::vector<std::string> tokens = ParseResponse(response);
 
-        if (tokens[0] == "OK" && tokens.size() == 1)
+        if (tokens[0] == "OK")
         {
-            std::cout << "OK" << '\n';
-        }
-        else if (tokens[0] == "OK" && tokens.size() == 2)
-        {
-            std::cout << "OK, Message Content:" << '\n';
-            std::cout << tokens[1] << '\n';
+            for (const auto& token : tokens)
+            {
+                std::cout << token << '\n';
+            }
         }
         else if (tokens[0] == "ERR")
         {
@@ -467,7 +456,7 @@ namespace TwMailer
             }
             else
             {
-                std::cout << "You've received " << messageCount << " messages!" << '\n';
+                std::cout << "You've received " << messageCount << (messageCount == 1 ? " message" : " messages!") << '\n';
                 for (long unsigned i = 1; i < tokens.size(); i++)
                 {
                     std::cout << tokens[i] << '\n';
@@ -475,6 +464,7 @@ namespace TwMailer
             }
         }
 
+        std::cout << "Press any button to continue!" << '\n';
         system("read REPLY");
     }
 

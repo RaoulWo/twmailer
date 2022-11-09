@@ -24,6 +24,7 @@ namespace TwMailer
         void TryConnectToServer();
         void StoreUsername();
         void PrintMenu() const;
+        char GetUserMenuInput();
         bool IsValidMenuChar(char c) const;
         std::string ConstructRequest(char c) const;
         std::string ConstructSendRequest() const;
