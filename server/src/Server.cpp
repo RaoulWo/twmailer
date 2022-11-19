@@ -130,14 +130,16 @@ namespace TwMailer
 
     void Server::TryListenForClients()
     {
-        int queuedRequests = 5;
-        if (listen(create_socket, queuedRequests) == -1)
-        {
-            throw std::runtime_error("Could not listen for clients!");
-        }
+        
+            int queuedRequests = 5;
 
         while (!abortRequested)
         {
+            if (listen(create_socket, queuedRequests) == -1)
+            {
+                throw std::runtime_error("Could not listen for clients!");
+            }
+
             std::cout << "Waiting for connections ..." << '\n';
 
             // Accept connection setup
@@ -158,12 +160,14 @@ namespace TwMailer
             // Start client
             std::cout << "Client connected from " << inet_ntoa(cliaddress.sin_addr) << ":" << ntohs(cliaddress.sin_port) << '\n';
 
-            // Add new socket to sockets vector
-            // sockets.push_back(new_socket);
-            // Add new thread to threads vector
-            //threads.push_back(std::thread([=] {CommunicateWithClient(&sockets[sockets.size() - 1]); }));
+            // Add new socket to sockets 
+            
+            sockets.push_back(new_socket);
 
-            CommunicateWithClient(&new_socket);
+            // Add new thread to threads vector
+            threads.push_back(std::thread([=] {CommunicateWithClient(&sockets[sockets.size()-1]); }));
+
+            //CommunicateWithClient(&new_socket);
 
             new_socket = -1;
         }
@@ -181,6 +185,15 @@ namespace TwMailer
             }
             create_socket = -1;
         }
+
+        // Iterate over the thread vector
+        for (std::thread & th : threads)
+        {
+            // If thread Object is Joinable then Join that thread.
+            if (th.joinable())
+                th.join();
+        }
+        
     }
 
     void Server::TryCommunicateWithClient(int* socket)
