@@ -11,6 +11,8 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
+
+
 namespace TwMailer
 {
     void Server::Start(int port)
@@ -162,14 +164,13 @@ namespace TwMailer
 
             // Add new socket to sockets 
             
-            sockets.push_back(new_socket);
+            //sockets.push_back(new_socket);
 
             // Add new thread to threads vector
-            threads.push_back(std::thread([=] {CommunicateWithClient(&sockets[sockets.size()-1]); }));
+            threads.push_back(std::thread([=] {CommunicateWithClient(&new_socket); }));
 
             //CommunicateWithClient(&new_socket);
 
-            new_socket = -1;
         }
 
         // Free the descriptor
@@ -199,14 +200,15 @@ namespace TwMailer
     void Server::TryCommunicateWithClient(int* socket)
     {
         std::cout << "Socket: " << *socket << " is here!" << '\n';
-
+        int clientSocket = *socket;
+        *socket = -1;
         char buffer[BUF];
         int size;
 
         do
         {
             // Receive message
-            size = recv(*socket, buffer, BUF - 1, 0);
+            size = recv(clientSocket, buffer, BUF - 1, 0);
             // Error handling
             if (size == -1)
             {
@@ -239,22 +241,22 @@ namespace TwMailer
             }
 
             // Send response
-            SendResponse(socket, response);
+            SendResponse(&clientSocket, response);
         } while (!abortRequested);
 
         // Free the descriptor
-        if (*socket != -1)
+        if (clientSocket != -1)
         {
-            if (shutdown(*socket, SHUT_RDWR) == -1)
+            if (shutdown(clientSocket, SHUT_RDWR) == -1)
             {
                 std::cerr << "Shutdown new_socket!" << '\n';
             }
-            if (close(*socket) == -1)
+            if (close(clientSocket) == -1)
             {
                 std::cerr << "Close new_socket!" << '\n';
             }
 
-            *socket = -1;
+            clientSocket= -1;
         }
     }
 
@@ -320,7 +322,9 @@ namespace TwMailer
         // If not create the directory entries
         if (!senderEntryExists)
         {
+            _mutex.lock();
             bool result = std::filesystem::create_directory(senderPath);
+            _mutex.unlock();
             if (!result)
             {
                 return "ERR\n";
@@ -328,7 +332,9 @@ namespace TwMailer
         }
         if (!receiverEntryExists)
         {
+            _mutex.lock();
             bool result = std::filesystem::create_directory(receiverPath);
+            _mutex.unlock();
             if (!result)
             {
                 return "ERR\n";
@@ -450,8 +456,9 @@ namespace TwMailer
         {
             return "ERR\n";
         }
-
+        _mutex.lock();
         bool result = std::filesystem::remove(path + "/" + messageNumber);
+        _mutex.unlock();
         if (!result)
         {
             return "ERR\n";

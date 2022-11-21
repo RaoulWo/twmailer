@@ -464,7 +464,7 @@ namespace TwMailer
             }
         }
 
-        std::cout << "Press any button to continue!" << '\n';
+        std::cout << "Press enter button to continue!" << '\n';
         system("read REPLY");
     }
 

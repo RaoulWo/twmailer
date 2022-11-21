@@ -5,6 +5,7 @@
 #include <string>
 #include <thread>
 #include <vector>
+#include <mutex>
 
 namespace TwMailer
 {
@@ -46,6 +47,7 @@ namespace TwMailer
         std::vector<int> sockets;
         std::vector<std::thread> threads;
         std::string mailSpoolDir;
+        std::mutex _mutex;
     };
 
 }
