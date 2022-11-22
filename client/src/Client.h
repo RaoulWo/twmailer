@@ -23,10 +23,12 @@ namespace TwMailer
         void TryStart();
         void TryConnectToServer();
         void StoreUsername();
+        void StorePassword();
         void PrintMenu() const;
         char GetUserMenuInput();
         bool IsValidMenuChar(char c) const;
         std::string ConstructRequest(char c) const;
+        std::string ConstructLoginRequest() const;
         std::string ConstructSendRequest() const;
         std::string ConstructListRequest() const;
         std::string ConstructReadRequest() const;
@@ -37,7 +39,7 @@ namespace TwMailer
         std::string GetSubject() const;
         std::string GetMessage() const;
         int GetMsgNum() const;
-        void HandleResponse(const std::string& response) const;
+        void HandleResponse(const std::string& response);
         std::vector<std::string> ParseResponse(const std::string& response) const;
 
         std::string ip;
@@ -50,8 +52,14 @@ namespace TwMailer
         bool isQuit = false;
 
         std::string username = "";
+        std::string password = "";
+
+        bool isLoggedIn = false;
+        int failedLoginAttempts = 0;
     };
 
+    int getch();
+    std::string getPassword(bool showAsterisk);
 }
 
 #endif

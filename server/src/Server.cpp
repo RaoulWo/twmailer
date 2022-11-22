@@ -4,12 +4,15 @@
 #include <fstream>
 #include <filesystem>
 #include <iostream>
+#include <ldap.h>
 #include <sstream>
 #include <stdexcept>
 #include <stdio.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
+
+
 
 namespace TwMailer
 {
@@ -130,14 +133,16 @@ namespace TwMailer
 
     void Server::TryListenForClients()
     {
-        int queuedRequests = 5;
-        if (listen(create_socket, queuedRequests) == -1)
-        {
-            throw std::runtime_error("Could not listen for clients!");
-        }
+        
+            int queuedRequests = 5;
 
         while (!abortRequested)
         {
+            if (listen(create_socket, queuedRequests) == -1)
+            {
+                throw std::runtime_error("Could not listen for clients!");
+            }
+
             std::cout << "Waiting for connections ..." << '\n';
 
             // Accept connection setup
@@ -158,14 +163,15 @@ namespace TwMailer
             // Start client
             std::cout << "Client connected from " << inet_ntoa(cliaddress.sin_addr) << ":" << ntohs(cliaddress.sin_port) << '\n';
 
-            // Add new socket to sockets vector
-            // sockets.push_back(new_socket);
+            // Add new socket to sockets 
+            
+            //sockets.push_back(new_socket);
+
             // Add new thread to threads vector
-            //threads.push_back(std::thread([=] {CommunicateWithClient(&sockets[sockets.size() - 1]); }));
+            threads.push_back(std::thread([=] {CommunicateWithClient(&new_socket); }));
 
-            CommunicateWithClient(&new_socket);
+            //CommunicateWithClient(&new_socket);
 
-            new_socket = -1;
         }
 
         // Free the descriptor
@@ -181,19 +187,29 @@ namespace TwMailer
             }
             create_socket = -1;
         }
+
+        // Iterate over the thread vector
+        for (std::thread & th : threads)
+        {
+            // If thread Object is Joinable then Join that thread.
+            if (th.joinable())
+                th.join();
+        }
+        
     }
 
     void Server::TryCommunicateWithClient(int* socket)
     {
         std::cout << "Socket: " << *socket << " is here!" << '\n';
-
+        int clientSocket = *socket;
+        *socket = -1;
         char buffer[BUF];
         int size;
 
         do
         {
             // Receive message
-            size = recv(*socket, buffer, BUF - 1, 0);
+            size = recv(clientSocket, buffer, BUF - 1, 0);
             // Error handling
             if (size == -1)
             {
@@ -226,22 +242,22 @@ namespace TwMailer
             }
 
             // Send response
-            SendResponse(socket, response);
+            SendResponse(&clientSocket, response);
         } while (!abortRequested);
 
         // Free the descriptor
-        if (*socket != -1)
+        if (clientSocket != -1)
         {
-            if (shutdown(*socket, SHUT_RDWR) == -1)
+            if (shutdown(clientSocket, SHUT_RDWR) == -1)
             {
                 std::cerr << "Shutdown new_socket!" << '\n';
             }
-            if (close(*socket) == -1)
+            if (close(clientSocket) == -1)
             {
                 std::cerr << "Close new_socket!" << '\n';
             }
 
-            *socket = -1;
+            clientSocket= -1;
         }
     }
 
@@ -252,7 +268,11 @@ namespace TwMailer
 
         std::string result;
 
-        if (tokens[0] == "SEND")
+        if (tokens[0] == "LOGIN")
+        {
+            result = HandleLoginRequest(tokens);
+        }
+        else if (tokens[0] == "SEND")
         {
             result = HandleSendRequest(tokens);
         }
@@ -290,6 +310,17 @@ namespace TwMailer
         }
     }
 
+    std::string Server::HandleLoginRequest(const std::vector<std::string>& tokens)
+    {
+        std::string username = tokens[1];
+        std::string password = tokens[2];
+
+        // Check if the user exists
+        bool userExists = CheckIfUserExists(username, password);
+
+        return userExists ? "OK\n" : "ERR\n";
+    }
+
     std::string Server::HandleSendRequest(const std::vector<std::string>& tokens)
     {
         std::string sender = tokens[1];
@@ -307,7 +338,9 @@ namespace TwMailer
         // If not create the directory entries
         if (!senderEntryExists)
         {
+            _mutex.lock();
             bool result = std::filesystem::create_directory(senderPath);
+            _mutex.unlock();
             if (!result)
             {
                 return "ERR\n";
@@ -315,7 +348,9 @@ namespace TwMailer
         }
         if (!receiverEntryExists)
         {
+            _mutex.lock();
             bool result = std::filesystem::create_directory(receiverPath);
+            _mutex.unlock();
             if (!result)
             {
                 return "ERR\n";
@@ -437,8 +472,9 @@ namespace TwMailer
         {
             return "ERR\n";
         }
-
+        _mutex.lock();
         bool result = std::filesystem::remove(path + "/" + messageNumber);
+        _mutex.unlock();
         if (!result)
         {
             return "ERR\n";
@@ -502,6 +538,82 @@ namespace TwMailer
         }
 
         return entries;
+    }
+
+    bool Server::CheckIfUserExists(const std::string& username, const std::string& password) const
+    {
+        // Set up the LDAP URI and Version
+        const std::string ldapUri = "ldap://ldap.technikum-wien.at:389";
+        const int ldapVersion = LDAP_VERSION3;
+
+        // Define the ldap search filter
+        const std::string ldapBindUser = "uid=" + username + ",ou=people,dc=technikum-wien,dc=at";
+
+        // Stores the return code of various ldap functions needed for error handling
+        int success = 0;
+
+        // Set up the ldap connection
+        LDAP *ldapHandle;
+        success = ldap_initialize(&ldapHandle, ldapUri.c_str());
+        if (success != LDAP_SUCCESS)
+        {
+            return false;
+        }
+
+        // Set the version options
+        success = ldap_set_option(ldapHandle, LDAP_OPT_PROTOCOL_VERSION, &ldapVersion);             
+        if (success != LDAP_OPT_SUCCESS)
+        {
+            std::cerr << "ldap_set_option: " << ldap_err2string(success) << '\n';
+
+            ldap_unbind_ext_s(ldapHandle, NULL, NULL);
+
+            return false;
+        }
+
+        // Initialize TLS
+        success = ldap_start_tls_s(ldapHandle, NULL, NULL);
+        if (success != LDAP_SUCCESS)
+        {
+            std::cerr << "ldap_start_tls_s: " << ldap_err2string(success) << '\n';
+
+            ldap_unbind_ext_s(ldapHandle, NULL, NULL);
+
+            return false;
+        }
+
+        // Converts password.c_str() from const char* to char *
+        char *nonConstPasswordCharPointer = new char[password.length() + 1];
+        strcpy(nonConstPasswordCharPointer, password.c_str());
+
+        // Bind the user credentials
+        BerValue bindCredentials;
+        bindCredentials.bv_val = nonConstPasswordCharPointer;
+        bindCredentials.bv_len = password.length();
+        BerValue *servercredp;
+
+        // Perform LDAP search for user, if success != LDAP_SUCCESS credentials were invalid
+        success = ldap_sasl_bind_s(
+            ldapHandle,
+            ldapBindUser.c_str(),
+            LDAP_SASL_SIMPLE,
+            &bindCredentials,
+            NULL,
+            NULL,
+            &servercredp);
+        if (success != LDAP_SUCCESS)
+        {
+            std::cerr << "Invalid user credentials!" << '\n';
+
+            ldap_unbind_ext_s(ldapHandle, NULL, NULL);
+
+            return false;
+        }
+
+        // Close the ldap connection
+        ldap_unbind_ext_s(ldapHandle, NULL, NULL);
+
+        return true;
     }
 
 }

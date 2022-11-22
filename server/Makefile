@@ -1,6 +1,7 @@
 # Compiler
 CXX := g++
 CXXFLAGS := -Wall -Wextra -pthread -std=c++17 -g
+LIBS := -lldap -llber
 
 # Directories
 SRC_DIR := src
@@ -14,7 +15,7 @@ EXECUTABLE := $(BUILD_DIR)/twmailer-server
 all:	build $(EXECUTABLE)
 
 $(EXECUTABLE): $(OBJECTS)	
-	$(CXX) $(CXXFLAGS) -o $@ $(OBJECTS)
+	$(CXX) $(CXXFLAGS) -o $@ $(OBJECTS) $(LIBS)
 
 $(OBJECTS): $(BUILD_DIR)/%.o : $(SRC_DIR)/%.cpp	
 	$(CXX) $(CXXFLAGS) -c $< -o $@
