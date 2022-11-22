@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <termios.h>
 #include <unistd.h>
 
 namespace TwMailer
@@ -76,16 +77,14 @@ namespace TwMailer
 
         std::cout << "Connection with server " << inet_ntoa(address.sin_addr) << " established!" << '\n';
 
-        // Store the username
+        // Store the username and password
         StoreUsername();
+        StorePassword();
 
-        // Handle user input
-        char c = GetUserMenuInput();
-        
-        // Construct request
-        std::string request = ConstructRequest(c);
+        // Construct login request
+        std::string request = ConstructLoginRequest();
 
-        // Send request
+        // Send login request
         SendRequest(request);
 
         do 
@@ -117,16 +116,37 @@ namespace TwMailer
                     std::cerr << e.what() << '\n';
                     system("read REPLY");
                 }
-            
 
-                // Handle user input
-                char c = GetUserMenuInput();
-                
-                // Construct request
-                std::string request = ConstructRequest(c);
+                if (isLoggedIn)
+                {
+                    // Handle user input
+                    char c = GetUserMenuInput();
+                    
+                    // Construct request
+                    std::string request = ConstructRequest(c);
+                    
+                    // Send request
+                    SendRequest(request);
+                }
+                else if (failedLoginAttempts < 3)
+                {
+                    // Store the username and password
+                    StoreUsername();
+                    StorePassword();
 
-                // Send request
-                SendRequest(request);
+                    // Construct login request
+                    std::string request = ConstructLoginRequest();
+
+                    // Send login request
+                    SendRequest(request);
+                }
+                else 
+                {
+                    // TODO Timeout
+                    std::cout << "3rd login failure, quitting application!" << '\n';
+
+                    exit(EXIT_FAILURE);
+                }
             }
         }
         while (!isQuit);
@@ -183,6 +203,69 @@ namespace TwMailer
 
         } while (true);
     }
+
+    void Client::StorePassword()
+    {
+        // Get the return character of the 'system("read REPLY")' call above
+        getchar();
+
+        password = getPassword(true);
+    }
+
+    int getch() 
+    {
+        int ch;
+        struct termios t_old, t_new;
+
+        tcgetattr(STDIN_FILENO, &t_old);
+        t_new = t_old;
+        t_new.c_lflag &= ~(ICANON | ECHO);
+        tcsetattr(STDIN_FILENO, TCSANOW, &t_new);
+
+        ch = getchar();
+
+        tcsetattr(STDIN_FILENO, TCSANOW, &t_old);
+        return ch;
+    }
+
+    std::string getPassword(bool showAsterisk)
+    {
+        const char BACKSPACE = 127;
+        const char RETURN = 10;
+
+        std::string password;
+        unsigned char ch = 0;
+
+        std::cout << "Enter your password:" << '\n';
+
+        while ((ch = getch()) != RETURN)
+        {
+            if (ch == BACKSPACE)
+            {
+                if (password.length() != 0)
+                {
+                    if (showAsterisk)
+                    {
+                        std::cout <<"\b \b";
+
+                    }
+                    password.resize(password.length()-1);
+                }
+            }
+            else
+            {
+                password += ch;
+                if (showAsterisk)
+                {
+                    std::cout << '*';
+                }
+            }
+        }
+        std::cout << '\n';
+
+        return password;
+    }
+
 
     void Client::PrintMenu() const
     {
@@ -245,6 +328,11 @@ namespace TwMailer
         }
 
         return request;
+    }
+
+    std::string Client::ConstructLoginRequest() const
+    {
+        return "LOGIN\n" + username + '\n' + password + '\n';
     }
 
     std::string Client::ConstructSendRequest() const
