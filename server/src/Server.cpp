@@ -4,6 +4,7 @@
 #include <fstream>
 #include <filesystem>
 #include <iostream>
+#include <ldap.h>
 #include <sstream>
 #include <stdexcept>
 #include <stdio.h>
@@ -541,9 +542,78 @@ namespace TwMailer
 
     bool Server::CheckIfUserExists(const std::string& username, const std::string& password) const
     {
-        // TODO Implement LDAP Lookup
+        // Set up the LDAP URI and Version
+        const std::string ldapUri = "ldap://ldap.technikum-wien.at:389";
+        const int ldapVersion = LDAP_VERSION3;
 
-        return username == "raoul" && password == "raoul";
+        // Define the ldap search filter
+        const std::string ldapBindUser = "uid=" + username + ",ou=people,dc=technikum-wien,dc=at";
+
+        // Stores the return code of various ldap functions needed for error handling
+        int success = 0;
+
+        // Set up the ldap connection
+        LDAP *ldapHandle;
+        success = ldap_initialize(&ldapHandle, ldapUri.c_str());
+        if (success != LDAP_SUCCESS)
+        {
+            return false;
+        }
+
+        // Set the version options
+        success = ldap_set_option(ldapHandle, LDAP_OPT_PROTOCOL_VERSION, &ldapVersion);             
+        if (success != LDAP_OPT_SUCCESS)
+        {
+            std::cerr << "ldap_set_option: " << ldap_err2string(success) << '\n';
+
+            ldap_unbind_ext_s(ldapHandle, NULL, NULL);
+
+            return false;
+        }
+
+        // Initialize TLS
+        success = ldap_start_tls_s(ldapHandle, NULL, NULL);
+        if (success != LDAP_SUCCESS)
+        {
+            std::cerr << "ldap_start_tls_s: " << ldap_err2string(success) << '\n';
+
+            ldap_unbind_ext_s(ldapHandle, NULL, NULL);
+
+            return false;
+        }
+
+        // Converts password.c_str() from const char* to char *
+        char *nonConstPasswordCharPointer = new char[password.length() + 1];
+        strcpy(nonConstPasswordCharPointer, password.c_str());
+
+        // Bind the user credentials
+        BerValue bindCredentials;
+        bindCredentials.bv_val = nonConstPasswordCharPointer;
+        bindCredentials.bv_len = password.length();
+        BerValue *servercredp;
+
+        // Perform LDAP search for user, if success != LDAP_SUCCESS credentials were invalid
+        success = ldap_sasl_bind_s(
+            ldapHandle,
+            ldapBindUser.c_str(),
+            LDAP_SASL_SIMPLE,
+            &bindCredentials,
+            NULL,
+            NULL,
+            &servercredp);
+        if (success != LDAP_SUCCESS)
+        {
+            std::cerr << "Invalid user credentials!" << '\n';
+
+            ldap_unbind_ext_s(ldapHandle, NULL, NULL);
+
+            return false;
+        }
+
+        // Close the ldap connection
+        ldap_unbind_ext_s(ldapHandle, NULL, NULL);
+
+        return true;
     }
 
 }
