@@ -267,7 +267,11 @@ namespace TwMailer
 
         std::string result;
 
-        if (tokens[0] == "SEND")
+        if (tokens[0] == "LOGIN")
+        {
+            result = HandleLoginRequest(tokens);
+        }
+        else if (tokens[0] == "SEND")
         {
             result = HandleSendRequest(tokens);
         }
@@ -303,6 +307,17 @@ namespace TwMailer
         {
             std::cerr << "Send the response failed!" << '\n';
         }
+    }
+
+    std::string Server::HandleLoginRequest(const std::vector<std::string>& tokens)
+    {
+        std::string username = tokens[1];
+        std::string password = tokens[2];
+
+        // Check if the user exists
+        bool userExists = CheckIfUserExists(username, password);
+
+        return userExists ? "OK\n" : "ERR\n";
     }
 
     std::string Server::HandleSendRequest(const std::vector<std::string>& tokens)
@@ -522,6 +537,13 @@ namespace TwMailer
         }
 
         return entries;
+    }
+
+    bool Server::CheckIfUserExists(const std::string& username, const std::string& password) const
+    {
+        // TODO Implement LDAP Lookup
+
+        return username == "raoul" && password == "raoul";
     }
 
 }

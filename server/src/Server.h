@@ -27,6 +27,7 @@ namespace TwMailer
         void TryListenForClients();
         std::string HandleRequest(const std::string& request);
         void SendResponse(int* socket, const std::string& response) const;
+        std::string HandleLoginRequest(const std::vector<std::string>& tokens);
         std::string HandleSendRequest(const std::vector<std::string>& tokens);
         std::string HandleListRequest(const std::vector<std::string>& tokens);
         std::string HandleReadRequest(const std::vector<std::string>& tokens);
@@ -37,6 +38,8 @@ namespace TwMailer
 
         bool EntryExistsInPath(const std::string& entry, const std::string& path) const;
         int GetNumberOfEntriesInPath(const std::string& path) const;
+
+        bool CheckIfUserExists(const std::string& username, const std::string& password) const;
 
         int create_socket = -1;
         int new_socket = -1;
