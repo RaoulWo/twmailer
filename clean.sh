@@ -12,3 +12,9 @@ echo ''
 # Clean twmailer-server
 echo -e "${LIGHT_PURPLE}Clean twmailer-server${NC}"
 (cd ./server && make clean)
+
+echo ''
+
+# Clean ldap-client
+echo -e "${LIGHT_PURPLE}Clean ldap-client${NC}"
+(cd ./ldap-client && make clean)

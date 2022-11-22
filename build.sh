@@ -12,3 +12,9 @@ echo ''
 # Build twmailer-server
 echo -e "${LIGHT_CYAN}Build twmailer-server${NC}"
 (cd ./server && make clean && make)
+
+echo ''
+
+# Build ldap-client
+echo -e "${LIGHT_CYAN}Build ldap-client${NC}"
+(cd ./ldap-client && make clean && make)
