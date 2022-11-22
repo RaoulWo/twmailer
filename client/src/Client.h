@@ -39,7 +39,7 @@ namespace TwMailer
         std::string GetSubject() const;
         std::string GetMessage() const;
         int GetMsgNum() const;
-        void HandleResponse(const std::string& response) const;
+        void HandleResponse(const std::string& response);
         std::vector<std::string> ParseResponse(const std::string& response) const;
 
         std::string ip;

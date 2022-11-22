@@ -505,7 +505,7 @@ namespace TwMailer
         return msgNum;
     }
 
-    void Client::HandleResponse(const std::string& response) const
+    void Client::HandleResponse(const std::string& response)
     {
         if (response.size() == 0)
         {
@@ -517,6 +517,8 @@ namespace TwMailer
 
         if (tokens[0] == "OK")
         {
+            if (!isLoggedIn) isLoggedIn = true;
+
             for (const auto& token : tokens)
             {
                 std::cout << token << '\n';
