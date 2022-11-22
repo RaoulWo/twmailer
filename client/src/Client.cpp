@@ -526,6 +526,8 @@ namespace TwMailer
         }
         else if (tokens[0] == "ERR")
         {
+            if (!isLoggedIn) failedLoginAttempts++;
+            
             std::cout << "ERROR" << '\n';
         }
         else
